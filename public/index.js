@@ -57,11 +57,12 @@ window.addEventListener('load', () => {
 
     let playerName = document.getElementById('playerName');
 
-    canvas.addEventListener('mousedown', startPainting);
-    canvas.addEventListener('mouseup', stopPainting);
-    document.addEventListener('mousemove', sketch);
+    canvas.addEventListener('pointerdown', startPainting);
+    canvas.addEventListener('pointerup', stopPainting);
+    canvas.addEventListener('pointercancel', stopPainting);
+    canvas.addEventListener('pointerleave', stopPainting);
+    document.addEventListener('pointermove', sketch);
     canvas.addEventListener('wheel', brushSize);
-    canvas.addEventListener('onmouseout', stopPainting);
     canvas.addEventListener('click', handleCanvasClick);
 });
 
@@ -70,9 +71,10 @@ loginContainer.innerHTML = String(loginDiv);
 
 function getPosition(event) { //Getting the mouse position
     if (canDraw) {
-        coord.x = event.clientX - canvas.offsetLeft;
-        coord.y = event.clientY - canvas.offsetTop;
-        if ((coord.x < 0 || coord.y < 0) || (coord.x > 800 || coord.y > 600)) {
+        const point = getCanvasPoint(event);
+        coord.x = point.x;
+        coord.y = point.y;
+        if ((coord.x < 0 || coord.y < 0) || (coord.x > canvas.width || coord.y > canvas.height)) {
             stopPainting();
         }
         else if (canSendCords) {
@@ -91,6 +93,14 @@ class sound {
 }
 
 function startPainting(event) { //Setting the canvas to drawable or not
+    event.preventDefault();
+    if (canvas.setPointerCapture && event.pointerId !== undefined) {
+        try {
+            canvas.setPointerCapture(event.pointerId);
+        } catch (err) {
+            // Ignore capture failures on unsupported browsers.
+        }
+    }
     paint = true;
     getPosition(event);
     socket.emit('startPaint', paint);
@@ -155,10 +165,9 @@ function handleCanvasClick(event) {
     if (!canDraw) return;
     if (!fillMode) return;
 
-    // compute click coords relative to canvas
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor(event.clientX - rect.left);
-    const y = Math.floor(event.clientY - rect.top);
+    const point = getCanvasPoint(event);
+    const x = Math.floor(point.x);
+    const y = Math.floor(point.y);
 
     // perform flood fill locally
     floodFill(x, y, hexToRgba(penColor));
@@ -187,6 +196,19 @@ function hexToRgba(hex) {
 
 function colorsMatch(aR, aG, aB, aA, bR, bG, bB, bA) {
     return aR === bR && aG === bG && aB === bB && aA === bA;
+}
+
+function getCanvasPoint(event) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = event.clientX ?? (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
+    const clientY = event.clientY ?? (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
 }
 
 function floodFill(startX, startY, fillColor) {
