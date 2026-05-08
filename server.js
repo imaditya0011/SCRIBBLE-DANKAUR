@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const Socket = require('socket.io');
 const app = express();
 const server = require('http').Server(app);
@@ -568,10 +569,10 @@ io.on('connection', socket => {
 
 
 // Start the server
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-    res.sendFile('/public/index.html')
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 
