@@ -699,6 +699,7 @@ socket.on('chooseEnd', () => {
     canChooseWord = false;
     loginContainer.innerHTML = "";
     clearInterval(timerChooseReset);
+    updateRoleUI();
 })
 
 var drawTimerReset;
@@ -778,6 +779,7 @@ socket.on('chosenPlayer', drawingPlayer => {
       </div>`;
 
     }
+    updateRoleUI();
 });
 
 
@@ -789,6 +791,7 @@ socket.on('drawEnd', () => {
         var noGuess = new sound("/sfx/noGuess.mp3");
         noGuess.play();
     }
+    updateRoleUI();
 })
 
 socket.on('scoreBoard', scoreBoard => {
@@ -801,6 +804,28 @@ socket.on('gameOver', () => {
     console.log("GO!");
     playerContainer.markWinnerCelebrate();
 });
+
+function updateRoleUI() {
+    // Show toolbar only to the drawing player
+    const toolbar = document.getElementById('bottomBar');
+    const chatField = document.getElementById('chatField');
+    const sendBtn = document.getElementById('sendMsgBtn');
+
+    if (canDraw) {
+        if (toolbar) toolbar.style.display = '';
+        // Drawer should not be able to send guesses
+        if (chatField) chatField.disabled = true;
+        if (sendBtn) sendBtn.disabled = true;
+        // clear any overlay messages for drawer
+        loginContainer.innerHTML = '';
+    } else {
+        // Hide drawing controls for guessers
+        if (toolbar) toolbar.style.display = 'none';
+        // Guessers can chat/guess
+        if (chatField) chatField.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
+    }
+}
 
 socket.on("disconnect", () => {
     socket.disconnect();
