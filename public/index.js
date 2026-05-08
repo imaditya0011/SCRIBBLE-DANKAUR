@@ -3,6 +3,7 @@ const socket = io({
 });
 
 brushsize = 1;
+let fillMode = false;
 let canSendCords = true;
 let sendTick = 0, recieveTick = 0;
 let playerCount = 0;
@@ -26,7 +27,6 @@ var canChooseWord = true;
 var guessWord = "";
 var guessedPlayer = false;
 var atleastOneGuessed = false;
-var audioMute = false;
 
 var penColor = "#000000";
 
@@ -41,32 +41,11 @@ loginDiv = `
     <form id="loginForm">
         <input id="playerName" type="text" maxlength="20" placeholder="nickname" autocomplete="off"
             autofocus>
-        <input  id="loginButton" type="button" onclick="loginToGame()" value="DRAW!">
+                <input  id="loginButton" type="button" onclick="loginToGame()" value="Join the room">
     </form>
     <button  id="randomName" onclick="randomNameGen()">🎲</button>
 </div>
 `;
-
-hostDiv = `<div id="overlay" onclick=""></div>
-<div class="loginArea" style="width: 350px; height: 230px;">
-  <br>
-  <h1>You are the host...</h1>
-  <h1>Press start to begin</h1>
-  <hr>
-  <br>
-  <button id="startGame" onClick="startGame()" style="padding: 5px; width: 100px; height: 30px;">
-    Let's Draw!
-  </button>
-</div>`;
-
-waitingDiv = `  
-<div id="overlay" onclick=""></div>
-<div style="height: 215px;" class="loginArea">
-  <br>
-  <h1>Waiting for the host...</h1>
-  <img width="50px"  src="/images/loadingGif.gif">
-  
-</div>`;
 
 choosingWord = ``;
 
@@ -83,6 +62,7 @@ window.addEventListener('load', () => {
     document.addEventListener('mousemove', sketch);
     canvas.addEventListener('wheel', brushSize);
     canvas.addEventListener('onmouseout', stopPainting);
+    canvas.addEventListener('click', handleCanvasClick);
 });
 
 let loginContainer = document.getElementById('login-container');
@@ -104,28 +84,9 @@ function getPosition(event) { //Getting the mouse position
 
 class sound {
     constructor(src) {
-        this.sound = document.createElement("audio");
-        this.sound.src = src;
-        this.sound.setAttribute("preload", "auto");
-        this.sound.setAttribute("controls", "none");
-        this.sound.style.display = "none";
-        document.body.appendChild(this.sound);
         this.play = function () {
-            if (!audioMute) {
-                console.log("Playing sound!");
-                this.sound.play();
-            }
+            return;
         };
-    }
-}
-
-function audioToggle(){
-    audioMute = !audioMute;
-    if(audioMute){
-        document.getElementById('audioControl').src = "images/audioOff.gif"
-    }else{
-        document.getElementById('audioControl').src = "images/audioOn.gif"
-
     }
 }
 
@@ -148,9 +109,129 @@ function brushSize(event) {
     }
 }
 
+function increaseBoldness() {
+    if (brushsize < 20) {
+        brushsize += 1;
+        updateBrushSizeDisplay();
+        socket.emit('brushSize', brushsize);
+    }
+}
+
+function decreaseBoldness() {
+    if (brushsize > 1) {
+        brushsize -= 1;
+        updateBrushSizeDisplay();
+        socket.emit('brushSize', brushsize);
+    }
+}
+
+function updateBrushSizeDisplay() {
+    const sizeDisplay = document.getElementById('brushSizeDisplay');
+    if (sizeDisplay) {
+        sizeDisplay.innerText = brushsize;
+    }
+}
+
+function toggleFill() {
+    if (canDraw) {
+        fillMode = !fillMode;
+        const fillBtn = document.getElementById('fillBtn');
+        if (fillBtn) {
+            fillBtn.classList.toggle('active-fill');
+        }
+        socket.emit('fillMode', fillMode);
+    }
+}
+
 function setColor(hexValue) {
     if (canDraw) {
+        penColor = hexValue;
+        ctx.strokeStyle = penColor;
         socket.emit('penColor', hexValue);
+    }
+}
+
+function handleCanvasClick(event) {
+    if (!canDraw) return;
+    if (!fillMode) return;
+
+    // compute click coords relative to canvas
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(event.clientX - rect.left);
+    const y = Math.floor(event.clientY - rect.top);
+
+    // perform flood fill locally
+    floodFill(x, y, hexToRgba(penColor));
+
+    // send the updated canvas image to server for broadcasting/replay
+    const dataURL = canvas.toDataURL();
+    socket.emit('canvasImage', dataURL);
+}
+
+function hexToRgba(hex) {
+    // Normalize hex
+    const sanitized = (hex || '#000000').replace('#', '');
+    const bigint = parseInt(sanitized, 16);
+    if (sanitized.length === 3) {
+        // e.g. f00 -> ff0000
+        const r = parseInt(sanitized[0] + sanitized[0], 16);
+        const g = parseInt(sanitized[1] + sanitized[1], 16);
+        const b = parseInt(sanitized[2] + sanitized[2], 16);
+        return [r, g, b, 255];
+    }
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return [r, g, b, 255];
+}
+
+function colorsMatch(aR, aG, aB, aA, bR, bG, bB, bA) {
+    return aR === bR && aG === bG && aB === bB && aA === bA;
+}
+
+function floodFill(startX, startY, fillColor) {
+    try {
+        const width = canvas.width;
+        const height = canvas.height;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        const startIdx = (startY * width + startX) * 4;
+        const startR = data[startIdx];
+        const startG = data[startIdx + 1];
+        const startB = data[startIdx + 2];
+        const startA = data[startIdx + 3];
+
+        const [fillR, fillG, fillB, fillA] = fillColor;
+
+        // If start color is same as fill color, nothing to do
+        if (colorsMatch(startR, startG, startB, startA, fillR, fillG, fillB, fillA)) return;
+
+        const stack = [[startX, startY]];
+
+        while (stack.length) {
+            const [x, y] = stack.pop();
+            if (x < 0 || x >= width || y < 0 || y >= height) continue;
+            const idx = (y * width + x) * 4;
+            const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
+
+            if (!colorsMatch(r, g, b, a, startR, startG, startB, startA)) continue;
+
+            // set pixel to fill color
+            data[idx] = fillR;
+            data[idx + 1] = fillG;
+            data[idx + 2] = fillB;
+            data[idx + 3] = fillA;
+
+            stack.push([x + 1, y]);
+            stack.push([x - 1, y]);
+            stack.push([x, y + 1]);
+            stack.push([x, y - 1]);
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+    } catch (err) {
+        console.error('Flood fill failed:', err);
     }
 }
 
@@ -168,12 +249,17 @@ function sketch(event) {
         ctx.beginPath();
         ctx.lineWidth = brushsize;
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         console.log(penColor);
         ctx.strokeStyle = penColor;
+        ctx.fillStyle = penColor;
         ctx.moveTo(coord.x, coord.y);
         getPosition(event);
         ctx.lineTo(coord.x, coord.y);
         ctx.stroke();
+        if (fillMode) {
+            ctx.fill();
+        }
     }
 }
 
@@ -378,7 +464,7 @@ function startGame() {
 
 function sendPosition(Xpos, Ypos) {
     if (canDraw) {
-        socket.emit('position', { x: Xpos, y: Ypos, brushsize: brushsize });
+        socket.emit('position', { x: Xpos, y: Ypos, brushsize: brushsize, penColor: penColor, fillMode: fillMode });
         sendTick++;
     }
 
@@ -399,8 +485,13 @@ function loginToGame() {
         socket.connect();
         playerContainer.addPlayer(pName, 0);
         socket.emit('playerName', pName)
-        loginContainer.style.height = "200px";
-        loginContainer.innerHTML = waitingDiv;
+        loginContainer.innerHTML = `
+        <div id="overlay" onclick=""></div>
+        <div style="height: 215px;" class="loginArea">
+          <br>
+          <h1>Joining the room...</h1>
+          <img width="50px"  src="/images/loadingGif.gif">
+        </div>`;
         chatText.focus();
     } else {
         console.log("INVALID LOGIN!");
@@ -428,15 +519,6 @@ socket.on('playersList', playersList => {
         if (player != pName) {
             playerContainer.addPlayer(player, pList[player]);
         }
-    }
-});
-
-socket.on('hostPlayer', boolVal => {
-    isHost = boolVal;
-    if (isHost) {
-        loginContainer.style.height = "230px";
-        loginContainer.style.width = "550px";
-        loginContainer.innerHTML = hostDiv;
     }
 });
 
@@ -488,7 +570,9 @@ socket.on('otherPOS', position => {
 
     ctx.lineWidth = position.brushsize;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = penColor;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = position.penColor || penColor;
+    ctx.fillStyle = position.penColor || penColor;
     if (recieveTick == 1) {
         ctx.moveTo(position.x, position.y);
     } else {
@@ -498,6 +582,9 @@ socket.on('otherPOS', position => {
     coord.x = position.x;
     coord.y = position.y;
     ctx.stroke();
+    if (position.fillMode) {
+        ctx.fill();
+    }
     paint = false;
 });
 
@@ -507,10 +594,35 @@ function clearCanvas() {
     }
 }
 
+function undoLastStroke() {
+    if (canDraw) {
+        socket.emit('undoStroke');
+    }
+}
+
 socket.on('penColor', hexValue => {
     penColor = hexValue;
     console.log('PC: ', penColor);
 
+});
+
+socket.on('fillMode', mode => {
+    fillMode = mode;
+});
+
+socket.on('brushSize', size => {
+    brushsize = size;
+    updateBrushSizeDisplay();
+});
+
+socket.on('canvasImage', dataURL => {
+    // Draw the incoming canvas snapshot
+    const img = new Image();
+    img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+    };
+    img.src = dataURL;
 });
 
 socket.on('clearCanvas', () => {

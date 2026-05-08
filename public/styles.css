@@ -389,15 +389,155 @@ code {
     position: absolute;
     margin: auto;
     bottom: 120px;
-    left: 350px;
-    width: 780px;
-    height: 50px;
-    border: 1px solid black;
+    left: 250px;
+    width: 900px;
+    height: auto;
+    border: 2px solid #333;
     border-radius: 10px;
-    display: grid;
-    grid-template-columns: auto auto auto auto auto auto auto auto auto auto;
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    background: linear-gradient(135deg, #80d3fc 0%, #a8e6f5 100%);
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    align-items: center;
+}
+
+.drawing-toolbar {
+    position: absolute;
+    margin: auto;
+    bottom: 120px;
+    left: 250px;
+    width: 900px;
+    height: auto;
+    border: 2px solid #333;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    background: linear-gradient(135deg, #80d3fc 0%, #a8e6f5 100%);
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    align-items: center;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
     gap: 10px;
-    background-color: lightblue;
+    padding: 0 10px;
+}
+
+.toolbar-label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    white-space: nowrap;
+}
+
+.color-palette {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.color-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.color-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.color-btn:active {
+    transform: scale(0.95);
+}
+
+.brush-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 2px solid #333;
+}
+
+.control-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #333;
+    border-radius: 6px;
+    background-color: #e8f4f8;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+    transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+    background-color: #d0e8f0;
+    transform: scale(1.05);
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.size-display {
+    font-weight: bold;
+    font-size: 16px;
+    min-width: 25px;
+    text-align: center;
+    color: #333;
+}
+
+.utility-btn {
+    padding: 8px 16px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background-color: #e8f4f8;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.utility-btn:hover {
+    background-color: #d0e8f0;
+    transform: scale(1.05);
+}
+
+.utility-btn:active {
+    transform: scale(0.95);
+}
+
+.fill-btn {
+    background-color: #fff3cd;
+}
+
+.fill-btn.active-fill {
+    background-color: #ffc107;
+    border: 2px solid #ff6b6b;
+    color: #333;
+    box-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
+}
+
+.undo-btn {
+    background-color: #d4edda;
+}
+
+.delete-btn {
+    background-color: #f8d7da;
+}
     padding: 10px;
 }
 

@@ -8,8 +8,10 @@ This is my first attempt to make a clone of an actual game.
 ------------
 
 ###  How to Play?
-- First player to join the game is the host and all the other players must wait untill the host begins the game.
-- Once the game starts, you will be assigned a word to draw.
+- Open the permanent link, enter a nickname, and you will join the current game immediately.
+- The first player starts the room automatically, and the game keeps cycling through rounds while the room stays open.
+- New players can join mid-round and enter as guessers right away.
+- Once it is your turn, you will be assigned a word to draw.
 - Use the drawing tools provided to create a picture related to your word.
 - Other players will try to guess the word based on your drawing.
 - Simultaneously, you can also guess what others are drawing by typing your answer into the chatbox.
